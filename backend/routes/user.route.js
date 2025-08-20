@@ -1,12 +1,15 @@
 import express from "express";
 import protectRoute from "../middlewares/protectRoute.js";
+import {
+  getUser,
+  updateUser,
+  deleteUser,
+} from "../controllers/user.controller.js";
 
 const router = express.Router();
 
-// Add your Protected User Routes here...
-
-router.get("/", protectRoute, (req, res) => {
-  res.send("This is a User Route");
-});
+router.get("/:id", protectRoute, getUser);
+router.put("/:id", protectRoute, updateUser);
+router.delete("/:id", protectRoute, deleteUser);
 
 export default router;
