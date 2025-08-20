@@ -1,0 +1,37 @@
+# Node.js
+node_modules/
+npm-debug.log
+.env
+.DS_Store
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Editor/IDE specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Build artifacts
+dist/
+build/
+coverage/
+
+# Test files and reports
+test/
+*.test.js
+*.spec.js
+.nyc_output/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Sensitive files
+config/local.js
+config/development.js
+*.key
+*.pem
