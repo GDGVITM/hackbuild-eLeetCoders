@@ -12,7 +12,7 @@ dotenv.config();
 // website routes
 import authRouter from "./routes/auth.route.js";
 import userRouter from "./routes/user.route.js";
-import eventRouter from "./routes/event.route.js";
+import orgRouter from "./routes/org.route.js";
 
 const app = express();
 
@@ -27,7 +27,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
-app.use("/api/event", eventRouter);
+app.use("/api/org", orgRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

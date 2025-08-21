@@ -79,7 +79,7 @@ export async function loginUser(req, res) {
     }
 
     // Find user by email
-    const user = await User.findOne({ email: email });
+    const user = await User.findOne({ email: email }).select("+password");
     if (!user) {
       return res
         .status(404)
@@ -95,6 +95,7 @@ export async function loginUser(req, res) {
     }
 
     // Generating token and setting cookie
+    console.log(user._id);
     generateTokenAndSetCookie(user._id, res);
 
     res.status(200).json({
