@@ -4,10 +4,10 @@ import generateTokenAndSetCookie from "../utils/generateTokens.js";
 
 export async function registerUser(req, res) {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
 
     // Validation checks
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !password) {
       return res
         .status(400)
         .json({ success: false, message: "All fields are required" });
@@ -37,32 +37,25 @@ export async function registerUser(req, res) {
       });
     }
 
-    const roles = ["user", "admin"];
-    if (!roles.contains(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Password should be at least 6 characters",
-      });
-    }
-
     // Hashing the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    if (role === "user") {
-      // Creating a new user without the Image field
-      const newUser = new User({
-        name: name,
-        email: email,
-        password: hashedPassword,
-      });
+    // Creating a new user
+    const newUser = new User({
+      name: name,
+      email: email,
+      password: hashedPassword,
+      role: "user",
+      organization: null,
+      registeredEvents: [],
+    });
 
-      // Generating token and setting cookie
-      generateTokenAndSetCookie(newUser._id, res);
+    // Generating token and setting cookie
+    generateTokenAndSetCookie(newUser._id, res);
 
-      // Saving the new user to the database
-      await newUser.save();
-    }
+    // Saving the new user to the database
+    await newUser.save();
 
     res.status(201).json({
       success: true,
