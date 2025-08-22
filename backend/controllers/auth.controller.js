@@ -2,7 +2,8 @@ import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import generateTokenAndSetCookie from "../utils/generateTokens.js";
 
-export async function registerUser(req, res) {
+export async function signupUser(req, res) {
+  console.log("POST /signup", req.body);
   try {
     const { name, email, password } = req.body;
 
@@ -68,6 +69,7 @@ export async function registerUser(req, res) {
 }
 
 export async function loginUser(req, res) {
+  console.log("POST /login", req.body);
   try {
     const { email, password } = req.body;
 
@@ -95,7 +97,6 @@ export async function loginUser(req, res) {
     }
 
     // Generating token and setting cookie
-    console.log(user._id);
     generateTokenAndSetCookie(user._id, res);
 
     res.status(200).json({
@@ -109,6 +110,7 @@ export async function loginUser(req, res) {
 }
 
 export async function logoutUser(req, res) {
+  console.log("POST /logout", req.user);
   try {
     // Clearing the authentication cookie
     res.clearCookie("token");
@@ -119,21 +121,5 @@ export async function logoutUser(req, res) {
   } catch (error) {
     console.log("Error in logout controller:", error.message);
     res.status(500).json({ success: false, message: "Internal server error" });
-  }
-}
-
-export async function getMe(req, res) {
-  try {
-    const { userId } = req.cookies;
-
-    const user = User.findOne({ id: userId });
-
-    res.status(200).json({
-      status: "sucess",
-      me: user,
-    });
-  } catch (error) {
-    console.error("Error fetching event:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
   }
 }
