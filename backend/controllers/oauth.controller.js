@@ -1,4 +1,6 @@
+import User from "../models/user.model.js";
 import axios from "axios";
+import generateTokenAndSetCookie from "../utils/generateTokens.js";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -36,11 +38,30 @@ export const googleCallback = async (req, res) => {
       }
     );
 
-    const user = userRes.data;
-    console.log(user);
+    const googleUser = userRes.data;
 
-    res.send("Logged In");
+    // 3. Check if user already exists
+    let user = await User.findOne({ email: googleUser.email });
+
+    if (!user) {
+      // 4. If not, create new user
+      user = new User({
+        name: googleUser.name,
+        email: googleUser.email,
+        password: null, // no password for OAuth users
+        googleId: googleUser.id,
+        role: "user",
+        organization: null,
+        registeredEvents: [],
+      });
+      await user.save();
+    }
+
+    generateTokenAndSetCookie(user._id, res);
+
+    res.redirect("http://localhost:3000/dashboard");
   } catch (error) {
-    console.log("Error in oauth controller:", error.message);
+    console.error("Error in oauth controller:", error.message);
+    res.status(500).json({ message: "OAuth login failed" });
   }
 };

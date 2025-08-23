@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,142 +21,279 @@ import {
   Plus,
   Bell,
   Settings,
+  QrCode,
 } from "lucide-react";
-import axios from "axios";
+import { useSearchParams } from "next/navigation";
+
+// Define TypeScript interfaces
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  organization?: string;
+}
+
+interface Event {
+  _id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  venue: string;
+  category: string;
+  description?: string;
+  capacity: number;
+  isPaid: boolean;
+  price?: number;
+  slug: string;
+}
+
+interface Notification {
+  _id: string;
+  title: string;
+  event: string;
+  createdAt: string;
+  type: string;
+}
+
+interface RegistrationForm {
+  eventId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  dietaryRequirements: string;
+  specialNeeds: string;
+  emergencyContact: string;
+  emergencyPhone: string;
+}
 
 export default function AttendeesDashboard() {
+  const [user, setUser] = useState<User | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [pastEvents, setPastEvents] = useState<Event[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+  const [registrationForm, setRegistrationForm] = useState<RegistrationForm>({
+    eventId: "",
+    fullName: "",
+    email: "",
+    phone: "",
+    dietaryRequirements: "",
+    specialNeeds: "",
+    emergencyContact: "",
+    emergencyPhone: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock user data
-  const user = {
-    name: "Alex Johnson",
-    email: "alex.johnson@university.edu",
-    avatar: "/student-avatar.png",
+  // To get eventId from the registration form state:
+  const eventId = registrationForm.eventId;
+
+  // Fetch user data
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/user", {
+        withCredentials: true,
+      });
+      setUser(res.data);
+    } catch (err) {
+      console.error("Failed to fetch user", err);
+      setError("Failed to load user data");
+    }
   };
 
-  // Mock upcoming events data
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: "Campus Tech Fest 2025",
-      date: "March 15, 2025",
-      time: "7:00 PM",
-      location: "Main Auditorium",
-      type: "Technology Conference",
-    },
-    {
-      id: 2,
-      title: "Spring Career Fair",
-      date: "March 22, 2025",
-      time: "10:00 AM",
-      location: "Student Union Building",
-      type: "Career Event",
-    },
-    {
-      id: 3,
-      title: "Intramural Sports Championship",
-      date: "March 28, 2025",
-      time: "3:00 PM",
-      location: "Athletic Complex",
-      type: "Sports Event",
-    },
-  ];
+  // Fetch events
+  const fetchEvents = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/event", {
+        withCredentials: true,
+      });
 
-  // Mock past events data
-  const pastEvents = [
-    {
-      id: 4,
-      title: "Winter Formal Dance",
-      date: "February 14, 2025",
-      type: "Social Event",
-    },
-    {
-      id: 5,
-      title: "Guest Speaker: Innovation in AI",
-      date: "February 8, 2025",
-      type: "Academic Event",
-    },
-    {
-      id: 6,
-      title: "Study Abroad Information Session",
-      date: "January 25, 2025",
-      type: "Information Session",
-    },
-  ];
+      const data = res.data.events;
+      console.log(data);
 
-  // Mock notifications data
-  const notifications = [
-    {
-      id: 1,
-      title: "Event Update: Speaker Change",
-      event: "Campus Tech Fest 2025",
-      time: "2 hours ago",
-      type: "update",
-    },
-    {
-      id: 2,
-      title: "Reminder: Event Tomorrow",
-      event: "Spring Career Fair",
-      time: "1 day ago",
-      type: "reminder",
-    },
-    {
-      id: 3,
-      title: "New Event Available",
-      event: "Photography Workshop",
-      time: "3 days ago",
-      type: "new",
-    },
-    {
-      id: 4,
-      title: "Event Cancelled",
-      event: "Study Group Session",
-      time: "1 week ago",
-      type: "cancelled",
-    },
-  ];
+      const now = new Date();
+      const upcoming = data.filter(
+        (event: Event) => new Date(event.endDate) > now
+      );
+      const past = data.filter(
+        (event: Event) => new Date(event.endDate) <= now
+      );
 
-  const addToCalendar = (event: any) => {
+      setUpcomingEvents(upcoming);
+      setPastEvents(past);
+    } catch (err) {
+      console.error("Failed to fetch events", err);
+      setError("Failed to load events");
+    }
+  };
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    // try {
+    //   const res = await axios.get("http://localhost:5000/api/notifications", {
+    //     withCredentials: true,
+    //   });
+    //   setNotifications(res.data);
+    // } catch (err) {
+    //   console.error("Failed to fetch notifications", err);
+    //   // Notifications might not be critical, so we don't set error state
+    // }
+  };
+
+  // Load all data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        await Promise.all([fetchUser(), fetchEvents(), fetchNotifications()]);
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+        setError("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Handle registration form submission
+  const handleRegistrationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await axios.post(
+        `http://localhost:5000/api/registration/${eventId}/register`,
+        registrationForm,
+        { withCredentials: true }
+      );
+
+      alert(
+        "Registration successful! You will receive a confirmation email shortly."
+      );
+      setIsRegistrationOpen(false);
+
+      // Reset form
+      setRegistrationForm({
+        eventId: "",
+        fullName: "",
+        email: "",
+        phone: "",
+        dietaryRequirements: "",
+        specialNeeds: "",
+        emergencyContact: "",
+        emergencyPhone: "",
+      });
+
+      // Refresh events to show updated registration status
+      fetchEvents();
+    } catch (err: any) {
+      console.error("Registration failed:", err);
+      setError(
+        err.response?.data?.message || "Registration failed. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle input changes in registration form
+  const handleInputChange = (field: keyof RegistrationForm, value: string) => {
+    setRegistrationForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // Add event to calendar
+  const addToCalendar = (event: Event) => {
     const startDate =
-      new Date(`${event.date} ${event.time}`)
+      new Date(event.startDate)
         .toISOString()
         .replace(/[-:]/g, "")
         .split(".")[0] + "Z";
+
     const endDate =
-      new Date(
-        new Date(`${event.date} ${event.time}`).getTime() + 2 * 60 * 60 * 1000
-      )
-        .toISOString()
-        .replace(/[-:]/g, "")
-        .split(".")[0] + "Z";
+      new Date(event.endDate).toISOString().replace(/[-:]/g, "").split(".")[0] +
+      "Z";
 
     const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
       event.title
     )}&dates=${startDate}/${endDate}&location=${encodeURIComponent(
-      event.location
+      event.venue
     )}&details=${encodeURIComponent(
-      `Join us for ${event.title} at ${event.location}`
+      `Join us for ${event.title} at ${event.venue}`
     )}`;
 
     window.open(googleCalendarUrl, "_blank");
   };
 
-  // Logout handler
+  // Handle logout
   const handleLogout = async () => {
     try {
-      console.log(document.cookie); // Debugging line
       await axios.post(
         "http://localhost:5000/api/auth/logout",
         {},
-        {
-          withCredentials: true, // send cookies to backend
-        }
+        { withCredentials: true }
       );
       window.location.href = "/";
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Logout failed. Please try again.");
+      console.error("Logout failed:", err);
+      setError(
+        err.response?.data?.message || "Logout failed. Please try again."
+      );
     }
   };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  // Format time for display
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-100 text-red-700 p-4 rounded-lg max-w-md mx-auto">
+            <h3 className="font-semibold mb-2">Error Loading Dashboard</h3>
+            <p className="mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -179,30 +317,27 @@ export default function AttendeesDashboard() {
               >
                 Browse Events
               </Link>
-              {/* Organize Event Button */}
-              <Link
-                href="/auth?redirect=organizer"
-                className="text-gray-600 hover:text-purple-600 font-medium transition-colors"
+              <Button
+                asChild
+                className="bg-purple-600 hover:bg-purple-700 text-white"
               >
-                <Button
-                  variant="outline"
-                  className="border-purple-200 text-purple-600 hover:bg-purple-50 bg-transparent"
-                >
+                <Link href="/organizer">
+                  <Plus className="h-4 w-4 mr-2" />
                   Organize Event
-                </Button>
-              </Link>
+                </Link>
+              </Button>
 
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center space-x-2 hover:bg-gray-50 rounded-lg p-2 transition-colors">
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={user.avatar || "/placeholder.svg"}
-                      alt={user.name}
+                      src={user?.avatar || "/placeholder.svg"}
+                      alt={user?.name || "User"}
                     />
                     <AvatarFallback className="bg-purple-100 text-purple-600 font-semibold">
-                      {user.name
-                        .split(" ")
+                      {user?.name
+                        ?.split(" ")
                         .map((n) => n[0])
                         .join("")}
                     </AvatarFallback>
@@ -233,10 +368,16 @@ export default function AttendeesDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">
+            <p>{error}</p>
+          </div>
+        )}
+
         {/* Dashboard Overview */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user.name.split(" ")[0]}! 👋
+            Welcome back, {user?.name?.split(" ")[0]}! 👋
           </h1>
           <p className="text-lg text-gray-600">
             You have{" "}
@@ -247,43 +388,16 @@ export default function AttendeesDashboard() {
           </p>
         </div>
 
-        {/* Organize Event Card Section */}
-        <section className="mb-12">
-          <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    Want to organize an event?
-                  </h3>
-                  <p className="text-gray-600">
-                    Create and manage your own events with our powerful
-                    organizer tools. Perfect for clubs, organizations, and
-                    student groups.
-                  </p>
-                </div>
-                <Link href="/auth?redirect=organizer">
-                  <Button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Organize Event
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
         {/* Upcoming Events Section */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
             Your Upcoming Events
           </h2>
-
           {upcomingEvents.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {upcomingEvents.map((event) => (
                 <Card
-                  key={event.id}
+                  key={event._id}
                   className="hover:shadow-lg transition-shadow duration-200"
                 >
                   <CardHeader className="pb-3">
@@ -294,20 +408,24 @@ export default function AttendeesDashboard() {
                       <div className="flex items-center space-x-2">
                         <Clock className="h-4 w-4" />
                         <span>
-                          {event.date} • {event.time}
+                          {formatDate(event.startDate)} •{" "}
+                          {formatTime(event.startDate)}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <MapPin className="h-4 w-4" />
-                        <span>{event.location}</span>
+                        <span>{event.venue}</span>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-3">
-                      <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                        View My Pass
-                      </Button>
+                      <Link href="/dashboard/digital-pass">
+                        <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                          <QrCode className="h-4 w-4 mr-2" />
+                          View My Pass
+                        </Button>
+                      </Link>
                       <Button
                         variant="outline"
                         className="w-full border-purple-200 text-purple-600 hover:bg-purple-50 bg-transparent"
@@ -347,12 +465,11 @@ export default function AttendeesDashboard() {
               Notifications & Updates
             </h2>
           </div>
-
           {notifications.length > 0 ? (
             <div className="space-y-4">
               {notifications.map((notification) => (
                 <Card
-                  key={notification.id}
+                  key={notification._id}
                   className="hover:shadow-md transition-shadow duration-200"
                 >
                   <CardContent className="p-4">
@@ -383,7 +500,9 @@ export default function AttendeesDashboard() {
                           </span>
                         </p>
                         <p className="text-xs text-gray-500">
-                          {notification.time}
+                          {new Date(
+                            notification.createdAt
+                          ).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -435,16 +554,18 @@ export default function AttendeesDashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {pastEvents.map((event) => (
                 <Card
-                  key={event.id}
+                  key={event._id}
                   className="opacity-75 hover:opacity-100 transition-opacity"
                 >
                   <CardContent className="p-4">
                     <h3 className="font-semibold text-gray-900 mb-1">
                       {event.title}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-2">{event.date}</p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {formatDate(event.startDate)}
+                    </p>
                     <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                      {event.type}
+                      {event.category}
                     </span>
                   </CardContent>
                 </Card>
@@ -453,6 +574,120 @@ export default function AttendeesDashboard() {
           )}
         </section>
       </main>
+
+      {/* Registration Modal */}
+      {isRegistrationOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-xl font-bold mb-4">Register for Event</h3>
+            <form onSubmit={handleRegistrationSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={registrationForm.fullName}
+                    onChange={(e) =>
+                      handleInputChange("fullName", e.target.value)
+                    }
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={registrationForm.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={registrationForm.phone}
+                    onChange={(e) => handleInputChange("phone", e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Dietary Requirements
+                  </label>
+                  <input
+                    type="text"
+                    value={registrationForm.dietaryRequirements}
+                    onChange={(e) =>
+                      handleInputChange("dietaryRequirements", e.target.value)
+                    }
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Special Needs
+                  </label>
+                  <input
+                    type="text"
+                    value={registrationForm.specialNeeds}
+                    onChange={(e) =>
+                      handleInputChange("specialNeeds", e.target.value)
+                    }
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Emergency Contact
+                  </label>
+                  <input
+                    type="text"
+                    value={registrationForm.emergencyContact}
+                    onChange={(e) =>
+                      handleInputChange("emergencyContact", e.target.value)
+                    }
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Emergency Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={registrationForm.emergencyPhone}
+                    onChange={(e) =>
+                      handleInputChange("emergencyPhone", e.target.value)
+                    }
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsRegistrationOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Registering..." : "Register"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

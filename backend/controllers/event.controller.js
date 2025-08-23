@@ -2,7 +2,6 @@ import Event from "../models/event.model.js";
 import slugify from "slugify";
 import validEvent from "../utils/validEvent.js";
 import User from "../models/user.model.js";
-import validEvent from "../utils/validEvent.js";
 
 // Create Event
 export async function createEvent(req, res) {
@@ -20,11 +19,11 @@ export async function createEvent(req, res) {
       price,
     } = req.body;
 
-    const { userId } = req.cookies;
+    const userId = "68a8eb1c0cd8f5ac82443475"; // Temporary user ID
     const user = User.find({ id: userId });
 
     const createdBy = userId;
-    const organizer = user.organization;
+    const organizer = "64f1a7c9b2d3e9f008888888"; // Temporary organizer ID
 
     // Slug generation (if not provided)
     let finalSlug = slug
@@ -43,7 +42,8 @@ export async function createEvent(req, res) {
       isPaid,
       price,
       organizer,
-      createdBy
+      createdBy,
+      res
     );
 
     const newEvent = new Event({

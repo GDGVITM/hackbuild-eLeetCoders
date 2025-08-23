@@ -3,7 +3,6 @@ import bcrypt from "bcrypt";
 import generateTokenAndSetCookie from "../utils/generateTokens.js";
 
 export async function signupUser(req, res) {
-  console.log("POST /signup", req.body);
   try {
     const { name, email, password } = req.body;
 
@@ -47,6 +46,7 @@ export async function signupUser(req, res) {
       name: name,
       email: email,
       password: hashedPassword,
+      googleId: null,
       role: "user",
       organization: null,
       registeredEvents: [],
@@ -69,7 +69,6 @@ export async function signupUser(req, res) {
 }
 
 export async function loginUser(req, res) {
-  console.log("POST /login", req.body);
   try {
     const { email, password } = req.body;
 
@@ -110,7 +109,6 @@ export async function loginUser(req, res) {
 }
 
 export async function logoutUser(req, res) {
-  console.log("POST /logout", req.user);
   try {
     // Clearing the authentication cookie
     res.clearCookie("token");

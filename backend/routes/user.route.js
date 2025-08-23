@@ -1,6 +1,7 @@
 import express from "express";
 import protectRoute from "../middlewares/protectRoute.js";
 import {
+  getCurrentUser,
   getUser,
   updateUser,
   deleteUser,
@@ -8,6 +9,7 @@ import {
 
 const router = express.Router();
 
+router.get("/", protectRoute, getCurrentUser);
 router.get("/:id", protectRoute, getUser);
 router.put("/:id", protectRoute, updateUser);
 router.delete("/:id", protectRoute, deleteUser);

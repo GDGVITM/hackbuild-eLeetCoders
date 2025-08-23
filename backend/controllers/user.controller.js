@@ -1,6 +1,21 @@
 // controllers/userController.js
 import User from "../models/user.model.js";
 
+export async function getCurrentUser(req, res) {
+  try {
+    const user = await User.findOne({ _id: req.user._id });
+    console.log("Current user:", user);
+
+    res.status(200).json({
+      status: "sucess",
+      me: user,
+    });
+  } catch (error) {
+    console.error("Error fetching event:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+}
+
 export async function getUser(req, res) {
   try {
     const { id } = req.params;

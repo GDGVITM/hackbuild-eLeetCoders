@@ -1,7 +1,8 @@
 export async function createRegistration(req, res) {
   try {
+    console.log("Creating registration for event:", req.params.eventId);
     const eventId = req.params.eventId;
-    const userId = req.user.id;
+    const userId = req.user._id;
     const registration = await Registration.create({ eventId, userId });
     res.status(201).json({ registration });
   } catch (error) {
