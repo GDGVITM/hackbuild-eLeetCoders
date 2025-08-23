@@ -3,8 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow landing page and about page without login
-  if (pathname === "/" || pathname === "/about") return NextResponse.next();
+  // Allow landing, events, and about page without login
+  if (
+    pathname === "/" ||
+    pathname === "/about" ||
+    pathname === "/browse-events"
+  ) {
+    return NextResponse.next();
+  }
 
   // Allow static files (images, etc.) to be accessed without login
   if (
@@ -16,6 +22,11 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/images") ||
     pathname.startsWith("/public")
   ) {
+    return NextResponse.next();
+  }
+
+  // Allow all root-level static files (e.g., /file.png, /logo.svg)
+  if (/^\/[^/]+\.(png|jpg|jpeg|svg|gif|webp|ico)$/i.test(pathname)) {
     return NextResponse.next();
   }
 
@@ -31,7 +42,9 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Only run middleware on these routes (all except '/', '/about', static, and api/auth)
+// Exclude static/image/about/public routes from middleware
 export const config = {
-  matcher: ["/((?!_next|api|favicon.ico|auth|static|images|public|about|$).*)"],
+  matcher: [
+    "/((?!_next|api|favicon.ico|auth|static|images|public|about|browse-events|$).*)",
+  ],
 };

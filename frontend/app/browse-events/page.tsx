@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -30,7 +28,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -41,20 +39,36 @@ type RegistrationFormType = {
   phone: string;
 };
 
+type EventType = {
+  _id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  category: "technical" | "cultural" | "sports" | "workshop" | "seminar";
+  venue?: string;
+  startDate: string;
+  endDate: string;
+  capacity: number;
+  isPaid: boolean;
+  price: number;
+  createdAt: string;
+  attendees?: any[];
+};
+
 export default function BrowseEventsPage() {
+  const router = useRouter(); // <-- must be here, not inside any function or condition
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDate, setSelectedDate] = useState("All");
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [sortBy, setSortBy] = useState("Newest");
-  const [registeredEvents, setRegisteredEvents] = useState<Set<number>>(
+  const [registeredEvents, setRegisteredEvents] = useState<Set<string>>(
     new Set()
   );
-  const [loadingRegistrations, setLoadingRegistrations] = useState<Set<number>>(
+  const [loadingRegistrations, setLoadingRegistrations] = useState<Set<string>>(
     new Set()
   );
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
@@ -67,83 +81,20 @@ export default function BrowseEventsPage() {
       phone: "",
     });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [events, setEvents] = useState<EventType[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const sampleEvents = [
-    {
-      id: 1,
-      title: "Campus Music Festival",
-      date: "March 15, 2025",
-      time: "7:00 PM",
-      location: "Main Auditorium",
-      category: "Music",
-      image: "/vibrant-student-concert.png",
-      tags: ["Music", "Entertainment"],
-      registeredCount: 245,
-      maxCapacity: 500,
-    },
-    {
-      id: 2,
-      title: "Tech Innovation Summit",
-      date: "March 18, 2025",
-      time: "2:00 PM",
-      location: "Engineering Building",
-      category: "Tech",
-      image: "/tech-conference-lecture.png",
-      tags: ["Technology", "Innovation"],
-      registeredCount: 89,
-      maxCapacity: 150,
-    },
-    {
-      id: 3,
-      title: "Intramural Basketball Championship",
-      date: "March 20, 2025",
-      time: "6:00 PM",
-      location: "Sports Complex",
-      category: "Sports",
-      image: "/outdoor-sports-cheer.png",
-      tags: ["Sports", "Competition"],
-      registeredCount: 156,
-      maxCapacity: 200,
-    },
-    {
-      id: 4,
-      title: "Career Networking Night",
-      date: "March 22, 2025",
-      time: "5:30 PM",
-      location: "Student Center",
-      category: "Career",
-      image: "/social-club-networking.png",
-      tags: ["Networking", "Career"],
-      registeredCount: 78,
-      maxCapacity: 100,
-    },
-    {
-      id: 5,
-      title: "Art Exhibition Opening",
-      date: "March 25, 2025",
-      time: "4:00 PM",
-      location: "Art Gallery",
-      category: "Arts",
-      image: "/art-exhibition-gallery.png",
-      tags: ["Arts", "Culture"],
-      registeredCount: 34,
-      maxCapacity: 80,
-    },
-    {
-      id: 6,
-      title: "Study Group: Advanced Mathematics",
-      date: "March 28, 2025",
-      time: "3:00 PM",
-      location: "Library Room 204",
-      category: "Academic",
-      image: "/students-studying-mathematics.png",
-      tags: ["Academic", "Study"],
-      registeredCount: 12,
-      maxCapacity: 25,
-    },
-  ];
+  useEffect(() => {
+    axios
+      .get("http://localhost:5000/api/event")
+      .then((res) => {
+        setEvents(res.data.events || res.data || []);
+      })
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const registerForEvent = async (eventId: number) => {
+  const registerForEvent = async (eventId: string) => {
     setLoadingRegistrations((prev) => new Set([...prev, eventId]));
     try {
       const response = await fetch(
@@ -250,7 +201,7 @@ export default function BrowseEventsPage() {
     setIsRegistrationOpen(true);
   };
 
-  const cancelRegistration = async (eventId: number) => {
+  const cancelRegistration = async (eventId: string) => {
     setLoadingRegistrations((prev) => new Set([...prev, eventId]));
     try {
       const response = await fetch(
@@ -313,24 +264,43 @@ export default function BrowseEventsPage() {
     }
   }, []);
 
-  const filteredEvents = sampleEvents.filter((event) => {
+  const filteredEvents = events.filter((event) => {
     const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.tags.some((tag) =>
-        tag.toLowerCase().includes(searchQuery.toLowerCase())
+      (event.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (event.venue?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (event.category?.toLowerCase() || "").includes(
+        searchQuery.toLowerCase()
+      ) ||
+      (event.description?.toLowerCase() || "").includes(
+        searchQuery.toLowerCase()
       );
+
     const matchesCategory =
       selectedCategory === "All" || event.category === selectedCategory;
-    const matchesDate = selectedDate === "All";
-    const matchesLocation = selectedLocation === "All";
+    // Add your date/location logic as needed
 
-    return matchesSearch && matchesCategory && matchesDate && matchesLocation;
+    return matchesSearch && matchesCategory;
   });
 
   // Show nothing until auth check is done
   if (!authChecked) {
     return <div>Loading...</div>;
+  }
+
+  // Helper function to format date as "Month Day, Year . h:mm AM/PM"
+  function formatEventDate(dateString: string) {
+    const date = new Date(dateString);
+    const datePart = date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const timePart = date.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `${datePart} • ${timePart}`;
   }
 
   return (
@@ -341,11 +311,11 @@ export default function BrowseEventsPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <Link
-                href="/"
+                href={user ? "/dashboard" : "/"}
                 className="flex items-center text-gray-600 hover:text-purple-600 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
-                Back to Home
+                Back
               </Link>
               <div className="text-2xl font-bold text-purple-600">
                 CampusHub
@@ -370,11 +340,7 @@ export default function BrowseEventsPage() {
                   </Link>
                 </>
               ) : (
-                <Link href="/dashboard">
-                  <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg">
-                    Dashboard
-                  </Button>
-                </Link>
+                <></>
               )}
             </div>
           </div>
@@ -481,18 +447,18 @@ export default function BrowseEventsPage() {
           {/* Events Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredEvents.map((event) => {
-              const isRegistered = registeredEvents.has(event.id);
-              const isLoading = loadingRegistrations.has(event.id);
-              const isFull = event.registeredCount >= event.maxCapacity;
+              const isRegistered = registeredEvents.has(event._id);
+              const isLoading = loadingRegistrations.has(event._id);
+              const isFull = event.attendees?.length! >= event.capacity!;
 
               return (
                 <Card
-                  key={event.id}
+                  key={event._id}
                   className="bg-white rounded-xl shadow-sm border-0 hover:shadow-lg transition-shadow overflow-hidden flex flex-col"
                 >
                   <div className="relative h-48 overflow-hidden">
                     <img
-                      src={event.image || "/placeholder.svg"}
+                      src={"/placeholder.svg"}
                       alt={event.title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     />
@@ -520,17 +486,17 @@ export default function BrowseEventsPage() {
                       <div className="flex items-center text-gray-600">
                         <Clock className="w-4 h-4 mr-2" />
                         <span className="text-sm">
-                          {event.date} • {event.time}
+                          {formatEventDate(event.startDate)}
                         </span>
                       </div>
                       <div className="flex items-center text-gray-600">
                         <MapPin className="w-4 h-4 mr-2" />
-                        <span className="text-sm">{event.location}</span>
+                        <span className="text-sm">{event.venue}</span>
                       </div>
                       <div className="flex items-center text-gray-600">
                         <UserPlus className="w-4 h-4 mr-2" />
                         <span className="text-sm">
-                          {event.registeredCount}/{event.maxCapacity} registered
+                          {event.attendees?.length}/{event.capacity} registered
                         </span>
                         {isFull && (
                           <span className="ml-2 bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-medium">
@@ -541,15 +507,7 @@ export default function BrowseEventsPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 mb-4 flex-grow">
-                      {event.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700"
-                        >
-                          <Tag className="w-3 h-3 mr-1" />
-                          {tag}
-                        </span>
-                      ))}
+                      {event.category}
                     </div>
 
                     <div className="space-y-2 mt-auto">
@@ -562,7 +520,7 @@ export default function BrowseEventsPage() {
                             View Details
                           </Button>
                           <Button
-                            onClick={() => cancelRegistration(event.id)}
+                            onClick={() => cancelRegistration(event._id)}
                             disabled={isLoading}
                             variant="outline"
                             className="border-red-200 text-red-600 hover:bg-red-50 px-3"
