@@ -4,7 +4,6 @@ import User from "../models/user.model.js";
 export async function getCurrentUser(req, res) {
   try {
     const user = await User.findOne({ _id: req.user._id });
-    console.log("Current user:", user);
 
     res.status(200).json({
       status: "sucess",
